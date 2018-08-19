@@ -328,7 +328,7 @@
 		{"id": "291", "name": "Madison St & Montgomery St", "lat": 40.713126, "long": -73.984844, "value": 1108},
 		{"id": "347", "name": "W Houston St & Hudson St", "lat": 40.72873888, "long": -74.00748842, "value": 2826},
 		{"id": "422", "name": "W 59 St & 10 Ave", "lat": 40.770513, "long": -73.988038, "value": 2365},
-		{"id": "260", "name": "Broad St & Bridge St", "lat": 40.70365182, "long": -74.01167797, "value": 746},
+		{"id": "260", "name": "Broad St & Bridge St", "lat": 40.70365182, "long": -74.01167797, "value": 746}
 	],
 	"links": [
 		{"source": "251", "target": "128", "value": 64},
@@ -689,6 +689,6 @@
 		{"source": "347", "target": "358", "value": 54},
 		{"source": "422", "target": "488", "value": 51},
 		{"source": "422", "target": "318", "value": 56},
-		{"source": "260", "target": "417", "value": 82},
+		{"source": "260", "target": "417", "value": 82}
 	]
 }
