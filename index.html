@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.3/dist/leaflet.css" integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
+        crossorigin="" />
+
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.3.3/dist/leaflet.js" integrity="sha512-tAGcCfR4Sc5ZP5ZoVz0quoZDYX5aCtEm/eu1KhSLj2c9eFrylXZknQYmxUssFaVJKvvc0dJQixhGjG2yXWiV9Q=="
+        crossorigin=""></script>
+
+
+    <script src="js/jquery-3.3.1.min.js"></script>
+
+    <style>
+        #mapid {
+            height: 800px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="mapid"></div>
+    <script>
+        console.log('test');
+
+        var mymap = L.map('mapid').setView([40.720610, -73.985242], 13);
+
+        L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(mymap);
+
+        var stations = {}
+
+        function addLinks(station_id) {
+            for (var dest_id in stations[station_id].trips_to) {
+                if (stations[station_id].trips_to.hasOwnProperty(dest_id)) {
+                    if (stations[station_id].trips_to[dest_id] > 20) {
+                        stations[station_id].lines.push(
+                            L.polyline([[stations[station_id].lat, stations[station_id].long], [stations[dest_id].lat, stations[dest_id].long]], {
+                                color: 'blue',
+                                weight: 1 + Math.max(Math.sqrt(stations[station_id].trips_to[dest_id]), 0),
+                                opacity: 0.5,
+                                interactive: false
+                            }).addTo(mymap));
+                    }
+                }
+            }
+        }
+
+        function removeLinks(station_id) {
+            for (var line in stations[station_id].lines) {
+                stations[station_id].lines[line].remove();
+            }
+
+            stations[station_id].lines = [];
+        }
+
+        // Asynchronous data loading 
+        jQuery.get('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json').done(function (data) {
+            data = JSON.parse(data);
+            //console.log(data);
+
+            for (var station_id in data) {
+                if (data.hasOwnProperty(station_id)) {
+                    stations[station_id] = data[station_id];
+                    stations[station_id]['lines'] = [];
+                    stations[station_id]['circle'] = L.circle([data[station_id].lat, data[station_id].long], {
+                        color: 'red',
+                        fillColor: '#f03',
+                        fillOpacity: 0.5,
+                        radius: 5 + Math.sqrt(data[station_id].trips_to_count + data[station_id].trips_from_count),
+                        id: station_id
+                    }).bindPopup(station_id + ' : ' + data[station_id].name)
+                        .on('mouseover', function (e) {
+                            this.setStyle({ color: 'blue', fillColor: '#30f' });
+                            addLinks(this.options.id);
+                        })
+                        .on('mouseout', function (e) {
+                            this.setStyle({ color: 'red', fillColor: '#f03' });
+                            removeLinks(this.options.id);
+                        })
+                        .addTo(mymap);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
