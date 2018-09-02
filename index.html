@@ -2,60 +2,236 @@
 <html lang="en">
 
 <head>
+    <title>NYC citibike</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.3/dist/leaflet.css" integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
         crossorigin="" />
 
     <!-- Make sure you put this AFTER Leaflet's CSS -->
     <script src="https://unpkg.com/leaflet@1.3.3/dist/leaflet.js" integrity="sha512-tAGcCfR4Sc5ZP5ZoVz0quoZDYX5aCtEm/eu1KhSLj2c9eFrylXZknQYmxUssFaVJKvvc0dJQixhGjG2yXWiV9Q=="
         crossorigin=""></script>
-
-
+    <script src="js/leaflet-ant-path.js"></script>
     <script src="js/jquery-3.3.1.min.js"></script>
 
     <style>
-        #mapid {
-            height: 800px;
+        #map {
+            height: 400px;
+            width: 100%;
+            height: 70%;
+            border: 2px solid #0c72b2;
+            border-radius: 5px;
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+        }
+
+        .main {
+            margin: auto;
+            color: 'white';
+            background-color: #222;
+            width: 80%;
+            height: 100%;
+        }
+
+        .input-container {
+            width: 90%;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            color: #0c72b2;
+            border: 2px solid #0c72b2;
+            padding-left: 5%;
+            padding-right: 5%;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-radius: 5px;
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+        }
+
+        .input-box {
+            vertical-align: top;
+            width: 33%;
+            display: inline-block;
+        }
+
+        .input-tag {
+            display: inline-block;
+            font-weight: bold;
+            font-size: 12px;
+            width: 60px;
+        }
+
+        .input-content {
+            display: inline-block;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #0c72b2;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+
+        html, body {
+            background-color: #222;
+            height: 100%;
+            margin: 0;
         }
     </style>
 </head>
 
 <body>
-    <div id="mapid"></div>
-    <script>
-        console.log('test');
+    <div class="main">
+        <h1>NYC citibike trips</h1>
+        <div id="map"></div>
+        <div class="input-container">
+            <div class="input-box">
+                <div>
+                    <div class="input-tag">Station</div>
+                    <div class="input-content">:</div>
+                    <div class="input-content" id="station-name">none</div>
+                </div>
+                <div>
+                    <div class="input-tag">Outbound</div>
+                    <div class="input-content">:</div>
+                    <div class="input-content" id="station-outbound">0</div>
+                </div>
+                <div>
+                    <div class="input-tag">Inbound</div>
+                    <div class="input-content">:</div>
+                    <div class="input-content" id="station-inbound">0</div>
+                </div>
+                <div>
+                    <div class="input-tag">Self</div>
+                    <div class="input-content">:</div>
+                    <div class="input-content" id="station-self">0</div>
+                </div>
+            </div>
+            <div class="input-box">
+                <div>
+                    <input class="input-content" type='checkbox' id='inbound-checkbox' checked>
+                    <div class="input-content">Inbound lines</div>
+                </div>
+                <div>
+                    <input class="input-content" type='checkbox' id='outbound-checkbox' checked>
+                    <div class="input-content">Outbound lines</div>
+                </div>
+            </div>
+            <div class="input-box">
+                <div>
+                    <div class="input-content">Num. of trips min threshold:</div>
+                    <input class="input-content" style="width: 35px" type='number' id='threshold-spinner' min="1">
+                </div>
+            </div>
+        </div>
+    </div>
 
-        var mymap = L.map('mapid').setView([40.720610, -73.985242], 13);
+    <script>
+        document.getElementById('threshold-spinner').value = 30;
+        document.getElementById('threshold-spinner').oninput = function (event) {
+            for (var idx in active_stations_ids) {
+                if (document.getElementById('outbound-checkbox').checked) {
+                    removeOutboundLinks(active_stations_ids[idx]);
+                    addOutboundLinks(active_stations_ids[idx]);
+                }
+
+                if (document.getElementById('inbound-checkbox').checked) {
+                    removeInboundLinks(active_stations_ids[idx]);
+                    addInboundLinks(active_stations_ids[idx]);
+                }
+            }
+        }
+
+        document.getElementById('outbound-checkbox').oninput = function (event) {
+            if (event.target.checked) {
+                for (var idx in active_stations_ids) {
+                    addOutboundLinks(active_stations_ids[idx]);
+                }
+            }
+            else {
+                for (var idx in active_stations_ids) {
+                    removeOutboundLinks(active_stations_ids[idx]);
+                }
+            }
+        }
+
+        document.getElementById('inbound-checkbox').oninput = function (event) {
+            if (event.target.checked) {
+                for (var idx in active_stations_ids) {
+                    addInboundLinks(active_stations_ids[idx]);
+                }
+            }
+            else {
+                for (var idx in active_stations_ids) {
+                    removeInboundLinks(active_stations_ids[idx]);
+                }
+            }
+        }
+
+        var mymap = L.map('map').setView([40.720610, -73.985242], 12);
 
         L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
             subdomains: 'abcd',
+            minZoom: 12,
             maxZoom: 19
         }).addTo(mymap);
 
         var stations = {}
+        var active_stations_ids = []
 
-        function addLinks(station_id) {
-            for (var dest_id in stations[station_id].trips_to) {
-                if (stations[station_id].trips_to.hasOwnProperty(dest_id)) {
-                    if (stations[station_id].trips_to[dest_id] > 20) {
-                        stations[station_id].lines.push(
-                            L.polyline([[stations[station_id].lat, stations[station_id].long], [stations[dest_id].lat, stations[dest_id].long]], {
-                                color: 'blue',
-                                weight: 1 + Math.max(Math.sqrt(stations[station_id].trips_to[dest_id]), 0),
-                                opacity: 0.5,
-                                interactive: false
+        function addOutboundLinks(station_id) {
+            for (var dest_id in stations[station_id].trips_outbound) {
+                if (stations[station_id].trips_outbound.hasOwnProperty(dest_id)) {
+                    if (stations[station_id].trips_outbound[dest_id] > document.getElementById("threshold-spinner").value) {
+                        var freq = 10 + 300 / (1 + Math.exp((stations[station_id].trips_outbound[dest_id] - 20) / 10))
+                        stations[station_id].outbound_lines.push(
+                            L.polyline.antPath([[stations[station_id].lat, stations[station_id].long], [stations[dest_id].lat, stations[dest_id].long]], {
+                                color: 'rgba(0, 0, 0, 0.2)',
+                                weight: 8,
+                                interactive: false,
+                                hardwareAccelerated: true,
+                                pulseColor: 'red',
+                                dashArray: [2, freq],
+                                delay: Math.random() * 300 + 1200
                             }).addTo(mymap));
                     }
                 }
             }
         }
 
-        function removeLinks(station_id) {
-            for (var line in stations[station_id].lines) {
-                stations[station_id].lines[line].remove();
+        function addInboundLinks(station_id) {
+            for (var source_id in stations[station_id].trips_inbound) {
+                if (stations[station_id].trips_inbound.hasOwnProperty(source_id)) {
+                    if (stations[station_id].trips_inbound[source_id] > document.getElementById("threshold-spinner").value) {
+                        var freq = 10 + 300 / (1 + Math.exp((stations[station_id].trips_inbound[source_id] - 20) / 10))
+                        stations[station_id].inbound_lines.push(
+                            L.polyline.antPath([[stations[source_id].lat, stations[source_id].long], [stations[station_id].lat, stations[station_id].long]], {
+                                color: 'rgba(0, 0, 0, 0.2)',
+                                weight: 8,
+                                interactive: false,
+                                hardwareAccelerated: true,
+                                pulseColor: 'green',
+                                dashArray: [2, freq],
+                                delay: Math.random() * 300 + 800
+                            }).addTo(mymap));
+                    }
+                }
+            }
+        }
+
+        function removeOutboundLinks(station_id) {
+            for (var line in stations[station_id].outbound_lines) {
+                stations[station_id].outbound_lines[line].remove();
             }
 
-            stations[station_id].lines = [];
+            stations[station_id].outbound_lines = [];
+        }
+
+        function removeInboundLinks(station_id) {
+            for (var line in stations[station_id].inbound_lines) {
+                stations[station_id].inbound_lines[line].remove();
+            }
+
+            stations[station_id].inbound_lines = [];
         }
 
         // Asynchronous data loading 
@@ -66,21 +242,73 @@
             for (var station_id in data) {
                 if (data.hasOwnProperty(station_id)) {
                     stations[station_id] = data[station_id];
-                    stations[station_id]['lines'] = [];
+                    stations[station_id]['outbound_lines'] = [];
+                    stations[station_id]['inbound_lines'] = [];
                     stations[station_id]['circle'] = L.circle([data[station_id].lat, data[station_id].long], {
-                        color: 'red',
-                        fillColor: '#f03',
+                        color: '#0c72b2',
+                        fillColor: '#30f',
                         fillOpacity: 0.5,
-                        radius: 5 + Math.sqrt(data[station_id].trips_to_count + data[station_id].trips_from_count),
+                        radius: 5 + Math.sqrt(data[station_id].trips_outbound_count + data[station_id].trips_inbound_count),
                         id: station_id
-                    }).bindPopup(station_id + ' : ' + data[station_id].name)
-                        .on('mouseover', function (e) {
-                            this.setStyle({ color: 'blue', fillColor: '#30f' });
-                            addLinks(this.options.id);
+                    })//.bindPopup(station_id + ' : ' + data[station_id].name)
+                        .on('mouseover', function (event) {
+                            var event_station_id = event.target.options.id;
+
+                            event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+
+                            document.getElementById('station-name').innerText = stations[event_station_id].name;
+                            var self_trip_count = 0
+                            if (event_station_id in stations[event_station_id].trips_inbound) {
+                                self_trip_count = stations[event_station_id].trips_inbound[event_station_id]
+                            }
+                            document.getElementById('station-self').innerText = self_trip_count;
+                            document.getElementById('station-outbound').innerText = stations[event_station_id].trips_outbound_count - self_trip_count;
+                            document.getElementById('station-inbound').innerText = stations[event_station_id].trips_inbound_count - self_trip_count;
                         })
-                        .on('mouseout', function (e) {
-                            this.setStyle({ color: 'red', fillColor: '#f03' });
-                            removeLinks(this.options.id);
+                        .on('mouseout', function (event) {
+                            var event_station_id = event.target.options.id;
+
+                            if (active_stations_ids.indexOf(event_station_id) >= 0) {
+                                event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+                            }
+                            else {
+                                event.target.setStyle({ color: '#0c72b2', fillColor: '#30f' });
+                            }
+
+                            document.getElementById('station-name').innerText = 'none';
+                            document.getElementById('station-self').innerText = 0;
+                            document.getElementById('station-outbound').innerText = 0;
+                            document.getElementById('station-inbound').innerText = 0;
+                        })
+                        .on('click', function (event) {
+                            var event_station_id = event.target.options.id;
+
+                            if (active_stations_ids.indexOf(event_station_id) < 0) {
+                                active_stations_ids.push(event_station_id);
+
+                                if (document.getElementById('outbound-checkbox').checked) {
+                                    addOutboundLinks(event_station_id);
+                                }
+
+                                if (document.getElementById('inbound-checkbox').checked) {
+                                    addInboundLinks(event_station_id);
+                                }
+
+                                event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+                            }
+                            else {
+                                active_stations_ids.splice(active_stations_ids.indexOf(event_station_id), 1);
+
+                                if (document.getElementById('outbound-checkbox').checked) {
+                                    removeOutboundLinks(event_station_id);
+                                }
+
+                                if (document.getElementById('inbound-checkbox').checked) {
+                                    removeInboundLinks(event_station_id);
+                                }
+
+                                event.target.setStyle({ color: '#0c72b2', fillColor: '#30f' });
+                            }
                         })
                         .addTo(mymap);
                 }
