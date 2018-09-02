@@ -2,14 +2,16 @@
 <html lang="en">
 
 <head>
-    <title>NYC citibike</title>
+    <title>NYC citibike trips</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.3/dist/leaflet.css" integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
         crossorigin="" />
 
     <!-- Make sure you put this AFTER Leaflet's CSS -->
     <script src="https://unpkg.com/leaflet@1.3.3/dist/leaflet.js" integrity="sha512-tAGcCfR4Sc5ZP5ZoVz0quoZDYX5aCtEm/eu1KhSLj2c9eFrylXZknQYmxUssFaVJKvvc0dJQixhGjG2yXWiV9Q=="
         crossorigin=""></script>
+
     <script src="js/leaflet-ant-path.js"></script>
+
     <script src="js/jquery-3.3.1.min.js"></script>
 
     <style>
@@ -47,7 +49,7 @@
 
         .input-box {
             vertical-align: top;
-            width: 33%;
+            width: 24%;
             display: inline-block;
         }
 
@@ -64,13 +66,57 @@
             font-size: 12px;
         }
 
+        .input-spinner {
+            display: inline-block;
+            font-weight: bold;
+            font-size: 12px;
+            color: #0c72b2;
+            background-color: #222;
+            padding-left: 5px;
+            padding-right: 5px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+            border: 2px solid #0c72b2;
+            border-radius: 5px;
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+        }
+
+        .input-btn {
+            display: inline-block;
+            font-weight: bold;
+            font-size: 12px;
+            color: #0c72b2;
+            background-color: #222;
+            padding-left: 5px;
+            padding-right: 5px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+            border: 2px solid #0c72b2;
+            border-radius: 5px;
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+            box-shadow: 0 5px #3f3f3f;
+        }
+
+        .input-btn:hover {
+            background-color: #465b6b;
+        }
+
+        .input-btn:active {
+            background-color: #465b6b;
+            box-shadow: 0 5px #0f0f0f;
+            transform: translateY(3px);
+        }
+
         h1 {
             text-align: center;
             color: #0c72b2;
             font-family: Verdana, Geneva, Tahoma, sans-serif;
         }
 
-        html, body {
+        html,
+        body {
             background-color: #222;
             height: 100%;
             margin: 0;
@@ -118,53 +164,19 @@
             <div class="input-box">
                 <div>
                     <div class="input-content">Num. of trips min threshold:</div>
-                    <input class="input-content" style="width: 35px" type='number' id='threshold-spinner' min="1">
+                    <input class="input-spinner" style="width: 35px" type='number' id='threshold-spinner' min="1">
+                </div>
+            </div>
+            <div class="input-box">
+                <div>
+                    <input class="input-btn" type="button" id="reload-btn" value="Reload">
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('threshold-spinner').value = 30;
-        document.getElementById('threshold-spinner').oninput = function (event) {
-            for (var idx in active_stations_ids) {
-                if (document.getElementById('outbound-checkbox').checked) {
-                    removeOutboundLinks(active_stations_ids[idx]);
-                    addOutboundLinks(active_stations_ids[idx]);
-                }
-
-                if (document.getElementById('inbound-checkbox').checked) {
-                    removeInboundLinks(active_stations_ids[idx]);
-                    addInboundLinks(active_stations_ids[idx]);
-                }
-            }
-        }
-
-        document.getElementById('outbound-checkbox').oninput = function (event) {
-            if (event.target.checked) {
-                for (var idx in active_stations_ids) {
-                    addOutboundLinks(active_stations_ids[idx]);
-                }
-            }
-            else {
-                for (var idx in active_stations_ids) {
-                    removeOutboundLinks(active_stations_ids[idx]);
-                }
-            }
-        }
-
-        document.getElementById('inbound-checkbox').oninput = function (event) {
-            if (event.target.checked) {
-                for (var idx in active_stations_ids) {
-                    addInboundLinks(active_stations_ids[idx]);
-                }
-            }
-            else {
-                for (var idx in active_stations_ids) {
-                    removeInboundLinks(active_stations_ids[idx]);
-                }
-            }
-        }
+        initializeInput();
 
         var mymap = L.map('map').setView([40.720610, -73.985242], 12);
 
@@ -177,6 +189,169 @@
 
         var stations = {}
         var active_stations_ids = []
+
+        loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json');
+
+        function loadData(path) {
+            clearMap();
+
+            // Asynchronous data loading 
+            jQuery.get(path).done(function (data) {
+                data = JSON.parse(data);
+
+                for (var station_id in data) {
+                    if (data.hasOwnProperty(station_id)) {
+                        stations[station_id] = data[station_id];
+                        stations[station_id]['outbound_lines'] = [];
+                        stations[station_id]['inbound_lines'] = [];
+                        stations[station_id]['circle'] = L.circle([data[station_id].lat, data[station_id].long], {
+                            color: '#0c72b2',
+                            fillColor: '#30f',
+                            fillOpacity: 0.5,
+                            radius: 5 + Math.sqrt(data[station_id].trips_outbound_count + data[station_id].trips_inbound_count),
+                            id: station_id
+                        })//.bindPopup(station_id + ' : ' + data[station_id].name)
+                            .on('mouseover', function (event) {
+                                var event_station_id = event.target.options.id;
+
+                                event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+
+                                document.getElementById('station-name').innerText = stations[event_station_id].name;
+                                var self_trip_count = 0
+                                if (event_station_id in stations[event_station_id].trips_inbound) {
+                                    self_trip_count = stations[event_station_id].trips_inbound[event_station_id]
+                                }
+                                document.getElementById('station-self').innerText = self_trip_count;
+                                document.getElementById('station-outbound').innerText = stations[event_station_id].trips_outbound_count - self_trip_count;
+                                document.getElementById('station-inbound').innerText = stations[event_station_id].trips_inbound_count - self_trip_count;
+                            })
+                            .on('mouseout', function (event) {
+                                var event_station_id = event.target.options.id;
+
+                                if (active_stations_ids.indexOf(event_station_id) >= 0) {
+                                    event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+                                }
+                                else {
+                                    event.target.setStyle({ color: '#0c72b2', fillColor: '#30f' });
+                                }
+
+                                document.getElementById('station-name').innerText = 'none';
+                                document.getElementById('station-self').innerText = 0;
+                                document.getElementById('station-outbound').innerText = 0;
+                                document.getElementById('station-inbound').innerText = 0;
+                            })
+                            .on('click', function (event) {
+                                var event_station_id = event.target.options.id;
+
+                                if (active_stations_ids.indexOf(event_station_id) < 0) {
+                                    active_stations_ids.push(event_station_id);
+
+                                    if (document.getElementById('outbound-checkbox').checked) {
+                                        addOutboundLinks(event_station_id);
+                                    }
+
+                                    if (document.getElementById('inbound-checkbox').checked) {
+                                        addInboundLinks(event_station_id);
+                                    }
+
+                                    event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+                                }
+                                else {
+                                    active_stations_ids.splice(active_stations_ids.indexOf(event_station_id), 1);
+
+                                    if (document.getElementById('outbound-checkbox').checked) {
+                                        removeOutboundLinks(event_station_id);
+                                    }
+
+                                    if (document.getElementById('inbound-checkbox').checked) {
+                                        removeInboundLinks(event_station_id);
+                                    }
+
+                                    event.target.setStyle({ color: '#0c72b2', fillColor: '#30f' });
+                                }
+                            })
+                            .addTo(mymap);
+                    }
+                }
+            });
+        }
+
+        function clearMap() {
+            for (var station_id in stations) {
+                if (stations.hasOwnProperty(station_id)) {
+                    if (active_stations_ids.indexOf(station_id) >= 0) {
+                        removeOutboundLinks(station_id);
+                        removeInboundLinks(station_id);
+                    }
+
+                    stations[station_id].circle.remove();
+                }
+            }
+
+            stations = {}
+            active_stations_ids = []
+        }
+
+        function initializeInput() {
+            initializeThresholdSpinner();
+            initializeOutboundCheckbox();
+            initializeInboundCheckbox();
+            initializeReloadButton();
+        }
+
+        function initializeThresholdSpinner() {
+            var spinner = document.getElementById('threshold-spinner');
+            spinner.value = 30;
+            spinner.oninput = function (event) {
+                for (var idx in active_stations_ids) {
+                    if (document.getElementById('outbound-checkbox').checked) {
+                        removeOutboundLinks(active_stations_ids[idx]);
+                        addOutboundLinks(active_stations_ids[idx]);
+                    }
+
+                    if (document.getElementById('inbound-checkbox').checked) {
+                        removeInboundLinks(active_stations_ids[idx]);
+                        addInboundLinks(active_stations_ids[idx]);
+                    }
+                }
+            }
+        }
+
+        function initializeOutboundCheckbox() {
+            document.getElementById('outbound-checkbox').oninput = function (event) {
+                if (event.target.checked) {
+                    for (var idx in active_stations_ids) {
+                        addOutboundLinks(active_stations_ids[idx]);
+                    }
+                }
+                else {
+                    for (var idx in active_stations_ids) {
+                        removeOutboundLinks(active_stations_ids[idx]);
+                    }
+                }
+            }
+        }
+
+        function initializeInboundCheckbox() {
+            document.getElementById('inbound-checkbox').oninput = function (event) {
+                if (event.target.checked) {
+                    for (var idx in active_stations_ids) {
+                        addInboundLinks(active_stations_ids[idx]);
+                    }
+                }
+                else {
+                    for (var idx in active_stations_ids) {
+                        removeInboundLinks(active_stations_ids[idx]);
+                    }
+                }
+            }
+        }
+
+        function initializeReloadButton() {
+            document.getElementById("reload-btn").onclick = function () {
+                loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json');
+            }
+        }
 
         function addOutboundLinks(station_id) {
             for (var dest_id in stations[station_id].trips_outbound) {
@@ -233,87 +408,6 @@
 
             stations[station_id].inbound_lines = [];
         }
-
-        // Asynchronous data loading 
-        jQuery.get('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json').done(function (data) {
-            data = JSON.parse(data);
-            //console.log(data);
-
-            for (var station_id in data) {
-                if (data.hasOwnProperty(station_id)) {
-                    stations[station_id] = data[station_id];
-                    stations[station_id]['outbound_lines'] = [];
-                    stations[station_id]['inbound_lines'] = [];
-                    stations[station_id]['circle'] = L.circle([data[station_id].lat, data[station_id].long], {
-                        color: '#0c72b2',
-                        fillColor: '#30f',
-                        fillOpacity: 0.5,
-                        radius: 5 + Math.sqrt(data[station_id].trips_outbound_count + data[station_id].trips_inbound_count),
-                        id: station_id
-                    })//.bindPopup(station_id + ' : ' + data[station_id].name)
-                        .on('mouseover', function (event) {
-                            var event_station_id = event.target.options.id;
-
-                            event.target.setStyle({ color: 'green', fillColor: '#0f3' });
-
-                            document.getElementById('station-name').innerText = stations[event_station_id].name;
-                            var self_trip_count = 0
-                            if (event_station_id in stations[event_station_id].trips_inbound) {
-                                self_trip_count = stations[event_station_id].trips_inbound[event_station_id]
-                            }
-                            document.getElementById('station-self').innerText = self_trip_count;
-                            document.getElementById('station-outbound').innerText = stations[event_station_id].trips_outbound_count - self_trip_count;
-                            document.getElementById('station-inbound').innerText = stations[event_station_id].trips_inbound_count - self_trip_count;
-                        })
-                        .on('mouseout', function (event) {
-                            var event_station_id = event.target.options.id;
-
-                            if (active_stations_ids.indexOf(event_station_id) >= 0) {
-                                event.target.setStyle({ color: 'green', fillColor: '#0f3' });
-                            }
-                            else {
-                                event.target.setStyle({ color: '#0c72b2', fillColor: '#30f' });
-                            }
-
-                            document.getElementById('station-name').innerText = 'none';
-                            document.getElementById('station-self').innerText = 0;
-                            document.getElementById('station-outbound').innerText = 0;
-                            document.getElementById('station-inbound').innerText = 0;
-                        })
-                        .on('click', function (event) {
-                            var event_station_id = event.target.options.id;
-
-                            if (active_stations_ids.indexOf(event_station_id) < 0) {
-                                active_stations_ids.push(event_station_id);
-
-                                if (document.getElementById('outbound-checkbox').checked) {
-                                    addOutboundLinks(event_station_id);
-                                }
-
-                                if (document.getElementById('inbound-checkbox').checked) {
-                                    addInboundLinks(event_station_id);
-                                }
-
-                                event.target.setStyle({ color: 'green', fillColor: '#0f3' });
-                            }
-                            else {
-                                active_stations_ids.splice(active_stations_ids.indexOf(event_station_id), 1);
-
-                                if (document.getElementById('outbound-checkbox').checked) {
-                                    removeOutboundLinks(event_station_id);
-                                }
-
-                                if (document.getElementById('inbound-checkbox').checked) {
-                                    removeInboundLinks(event_station_id);
-                                }
-
-                                event.target.setStyle({ color: '#0c72b2', fillColor: '#30f' });
-                            }
-                        })
-                        .addTo(mymap);
-                }
-            }
-        });
     </script>
 </body>
 
