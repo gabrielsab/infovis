@@ -127,6 +127,15 @@
 <body>
     <div class="main">
         <h1>NYC citibike trips</h1>
+        <div class="input-container">
+            <div class="input-box">
+                <div>
+                    <div class="input-tag">Month</div>
+                    <div class="input-content">:</div>
+                    <select class="input-content" id="month-select"></select>
+                </div>
+            </div>
+        </div>
         <div id="map"></div>
         <div class="input-container">
             <div class="input-box">
@@ -190,14 +199,17 @@
         var stations = {}
         var active_stations_ids = []
 
-        loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json');
+        //loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json');
+        loadData('/data/citibike_trips_monthly_' + document.getElementById('month-select').value + '.json');
 
         function loadData(path) {
             clearMap();
 
             // Asynchronous data loading 
             jQuery.get(path).done(function (data) {
-                data = JSON.parse(data);
+                if (typeof data === 'string') {
+                    data = JSON.parse(data);
+                }
 
                 for (var station_id in data) {
                     if (data.hasOwnProperty(station_id)) {
@@ -297,6 +309,7 @@
             initializeOutboundCheckbox();
             initializeInboundCheckbox();
             initializeReloadButton();
+            initializeMonthSelect();
         }
 
         function initializeThresholdSpinner() {
@@ -349,7 +362,25 @@
 
         function initializeReloadButton() {
             document.getElementById("reload-btn").onclick = function () {
-                loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data_201502_new.json');
+                loadData('/data/citibike_trips_monthly_' + document.getElementById('month-select').value + '.json');
+            }
+        }
+
+        function initializeMonthSelect() {
+            var select = document.getElementById("month-select");
+            
+            var d = new Date(2013, 5); // june 2013
+            while (d.getFullYear() < 2018 || (d.getFullYear() == 2018 && d.getMonth() <= 6)) {
+                var option = document.createElement("option");
+                var monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
+                option.value = d.getFullYear().toString() + monthStr;
+                option.innerText = d.getFullYear().toString() + "-" + monthStr;
+                select.appendChild(option);
+                d.setMonth(d.getMonth() + 1);
+            }
+
+            select.oninput = function (event) {
+                loadData('/data/citibike_trips_monthly_' + event.target.value + '.json');
             }
         }
 
