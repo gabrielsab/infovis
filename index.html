@@ -199,7 +199,7 @@
         var stations = {}
         var active_stations_ids = []
 
-        loadData('data/citibike_trips_monthly_' + document.getElementById('month-select').value + '.json');
+        loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data/citibike_trips_monthly_' + document.getElementById('month-select').value + '.json');
 
         function loadData(path) {
             clearMap();
@@ -361,14 +361,15 @@
 
         function initializeReloadButton() {
             document.getElementById("reload-btn").onclick = function () {
-                loadData('data/citibike_trips_monthly_' + document.getElementById('month-select').value + '.json');
+                loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data/citibike_trips_monthly_' + document.getElementById('month-select').value + '.json');
             }
         }
 
         function initializeMonthSelect() {
             var select = document.getElementById("month-select");
             
-            var d = new Date(2013, 5); // june 2013
+            //var d = new Date(2013, 5); // june 2013
+            var d = new Date(2018, 0);
             while (d.getFullYear() < 2018 || (d.getFullYear() == 2018 && d.getMonth() <= 6)) {
                 var option = document.createElement("option");
                 var monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
@@ -379,7 +380,7 @@
             }
 
             select.oninput = function (event) {
-                loadData('data/citibike_trips_monthly_' + event.target.value + '.json');
+                loadData('https://raw.githubusercontent.com/gabrielsab/infovis/master/data/citibike_trips_monthly_' + event.target.value + '.json');
             }
         }
 
