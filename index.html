@@ -292,9 +292,7 @@
                 var stations_to_remove_from_active = []
                 for (var idx in active_stations_ids) {
                     station_id = active_stations_ids[idx];
-                    console.log(station_id);
                     if (stations.hasOwnProperty(station_id)) {
-                        console.log('passed');
                         if (document.getElementById("keep-active-checkbox").checked) {
                             if (document.getElementById('outbound-checkbox').checked) {
                                 addOutboundLinks(station_id);
