@@ -173,10 +173,14 @@
             <div class="input-box">
                 <div>
                     <div class="input-content">Num. of trips min threshold:</div>
-                    <input class="input-spinner" style="width: 35px" type='number' id='threshold-spinner' min="1">
+                    <input class="input-spinner" style="width: 40px" type='number' id='threshold-spinner' min="1">
                 </div>
             </div>
             <div class="input-box">
+                <div>
+                    <input class="input-content" type='checkbox' id='keep-active-checkbox' checked>
+                    <div class="input-content">Keep active stations</div>
+                </div>
                 <div>
                     <input class="input-btn" type="button" id="reload-btn" value="Reload">
                 </div>
@@ -225,7 +229,7 @@
                             .on('mouseover', function (event) {
                                 var event_station_id = event.target.options.id;
 
-                                event.target.setStyle({ color: 'green', fillColor: '#0f3' });
+                                event.target.setStyle({ color: 'yellow', fillColor: 'rgb(134, 133, 42)' });
 
                                 document.getElementById('station-name').innerText = stations[event_station_id].name;
                                 var self_trip_count = 0
@@ -284,6 +288,34 @@
                             .addTo(mymap);
                     }
                 }
+
+                var stations_to_remove_from_active = []
+                for (var idx in active_stations_ids) {
+                    station_id = active_stations_ids[idx];
+                    console.log(station_id);
+                    if (stations.hasOwnProperty(station_id)) {
+                        console.log('passed');
+                        if (document.getElementById("keep-active-checkbox").checked) {
+                            if (document.getElementById('outbound-checkbox').checked) {
+                                addOutboundLinks(station_id);
+                            }
+
+                            if (document.getElementById('inbound-checkbox').checked) {
+                                addInboundLinks(station_id);
+                            }
+
+                            stations[station_id]['circle'].setStyle({ color: 'green', fillColor: '#0f3' });
+                        }
+                    }
+                    else {
+                        stations_to_remove_from_active.push(station_id);
+                    }
+                }
+
+                for (var idx in stations_to_remove_from_active) {
+                    station_id = stations_to_remove_from_active[idx];
+                    active_stations_ids.splice(active_stations_ids.indexOf(station_id), 1);
+                }
             });
         }
 
@@ -299,8 +331,11 @@
                 }
             }
 
-            stations = {}
-            active_stations_ids = []
+            stations = {};
+
+            if (!(document.getElementById("keep-active-checkbox").checked)) {
+                active_stations_ids = [];
+            }
         }
 
         function initializeInput() {
@@ -313,7 +348,7 @@
 
         function initializeThresholdSpinner() {
             var spinner = document.getElementById('threshold-spinner');
-            spinner.value = 30;
+            spinner.value = 150;
             spinner.oninput = function (event) {
                 for (var idx in active_stations_ids) {
                     if (document.getElementById('outbound-checkbox').checked) {
@@ -367,16 +402,16 @@
 
         function initializeMonthSelect() {
             var select = document.getElementById("month-select");
-            
+
             //var d = new Date(2013, 5); // june 2013
-            var d = new Date(2018, 0);
-            while (d.getFullYear() < 2018 || (d.getFullYear() == 2018 && d.getMonth() <= 6)) {
+            var d = new Date(2018, 6);
+            while (d.getFullYear() > 2013 || (d.getFullYear() == 2013 && d.getMonth() >= 5)) {
                 var option = document.createElement("option");
                 var monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
                 option.value = d.getFullYear().toString() + monthStr;
                 option.innerText = d.getFullYear().toString() + "-" + monthStr;
                 select.appendChild(option);
-                d.setMonth(d.getMonth() + 1);
+                d.setMonth(d.getMonth() - 1);
             }
 
             select.oninput = function (event) {
